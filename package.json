@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "aws-sdk": "^2.615.0",
+    "bluebird": "^3.7.2"
+  }
+}
