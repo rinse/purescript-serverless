@@ -64,6 +64,7 @@ type GetResponse i =
         }
     }
 
+-- |Gets an item of DynamoDB.
 getItem :: forall k r a. Decode a
         => DocumentClient a
         -> GetParams k r
@@ -88,5 +89,6 @@ renderMultipleErrors = renderForeignErrors <<< toList
     where
     renderForeignErrors = foldr (\a b -> renderForeignError a <> b) mempty
 
+-- |Puts an item on DynamoDB.
 putItem :: forall r a. DocumentClient a -> PutParams a r -> Aff Unit
 putItem = fromJSPromise2 _putItem
