@@ -13,6 +13,10 @@ exports._getItem = async function (documentClient, params) {
     return documentClient.get(params).promise()
 };
 
+exports._deleteItem = async function (documentClient, params) {
+    return documentClient.delete(params).promise();
+};
+
 exports._putItem = async function (documentClient, params) {
     return documentClient.put(params).promise();
 };

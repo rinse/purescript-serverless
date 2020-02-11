@@ -1,9 +1,11 @@
 module Network.AWS.Serverless.DynamoDB
     ( documentClient
     , getItem
+    , deleteItem
     , putItem
     , DocumentClient
     , GetParams
+    , DeleteParams
     , PutParams
     , GetResponse
     ) where
@@ -27,6 +29,7 @@ foreign import data DocumentClient :: Type -> Type
 
 foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
 foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise (GetResponse Foreign))
+foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
 
 
@@ -37,6 +40,7 @@ documentClient :: forall r a. Proxy a -> { | r } -> DocumentClient a
 documentClient = const _documentClient
 
 type GetParams k r = { "TableName" :: String, "Key" :: k | r }
+type DeleteParams i r = { "TableName" :: String, "Key" :: i | r }
 type PutParams i r = { "TableName" :: String, "Item" :: i | r }
 
 type GetResponse i =
@@ -88,6 +92,10 @@ renderMultipleErrors :: MultipleErrors -> String
 renderMultipleErrors = renderForeignErrors <<< toList
     where
     renderForeignErrors = foldr (\a b -> renderForeignError a <> b) mempty
+
+-- |Deletes an item of DynamoDB.
+deleteItem :: forall k r a. DocumentClient a -> DeleteParams k r -> Aff Unit
+deleteItem = fromJSPromise2 _deleteItem
 
 -- |Puts an item on DynamoDB.
 putItem :: forall r a. DocumentClient a -> PutParams a r -> Aff Unit
