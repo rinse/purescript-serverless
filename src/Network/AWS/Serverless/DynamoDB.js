@@ -20,3 +20,7 @@ exports._deleteItem = async function (documentClient, params) {
 exports._putItem = async function (documentClient, params) {
     return documentClient.put(params).promise();
 };
+
+exports._scanItems = async function (documentClient, params) {
+    return documentClient.scan(params).promise();
+};

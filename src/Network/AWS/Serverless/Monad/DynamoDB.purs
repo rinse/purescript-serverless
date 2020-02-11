@@ -2,6 +2,7 @@ module Network.AWS.Serverless.DynamoDB.Monad
     ( getItem
     , deleteItem
     , putItem
+    , scanItems
     , runDynamoDB
     , DynamoDB
     ) where
@@ -30,3 +31,6 @@ deleteItem = ReaderT <<< flip D.deleteItem
 
 putItem :: forall r a. D.PutParams a r -> DynamoDB a Unit
 putItem = ReaderT <<< flip D.putItem
+
+scanItems :: forall r a. Decode a => D.ScanParams r -> DynamoDB a (D.ScanResponse (Array a))
+scanItems = ReaderT <<< flip D.scanItems

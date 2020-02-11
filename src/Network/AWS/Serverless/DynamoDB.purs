@@ -3,11 +3,15 @@ module Network.AWS.Serverless.DynamoDB
     , getItem
     , deleteItem
     , putItem
+    , scanItems
     , DocumentClient
     , GetParams
     , DeleteParams
     , PutParams
+    , ScanParams
+    , ConsumedCapacity
     , GetResponse
+    , ScanResponse
     ) where
 
 
@@ -31,6 +35,7 @@ foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
 foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise (GetResponse Foreign))
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
+foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise (ScanResponse Foreign))
 
 
 fromJSPromise2 :: forall a b c. EffectFn2 a b (Promise c) -> a -> b -> Aff c
@@ -42,30 +47,41 @@ documentClient = const _documentClient
 type GetParams k r = { "TableName" :: String, "Key" :: k | r }
 type DeleteParams i r = { "TableName" :: String, "Key" :: i | r }
 type PutParams i r = { "TableName" :: String, "Item" :: i | r }
+type ScanParams r = { "TableName" :: String | r }
+
+type ConsumedCapacity =
+    { "TableName" :: String
+    , "CapacityUnits" :: Number
+    , "ReadCapacityUnits" :: Number
+    , "WriteCapacityUnits" :: Number
+    , "Table" ::
+        { "ReadCapacityUnits" :: Number
+        , "WriteCapacityUnits" :: Number
+        , "CapacityUnits" :: Number
+        }
+    , "LocalSecondaryIndexes" ::
+        { "ReadCapacityUnits" :: Number
+        , "WriteCapacityUnits" :: Number
+        , "CapacityUnits" :: Number
+        }
+    , "GlobalSecondaryIndexes" ::
+        { "ReadCapacityUnits" :: Number
+        , "WriteCapacityUnits" :: Number
+        , "CapacityUnits" :: Number
+        }
+    }
 
 type GetResponse i =
     { "Item" :: i
-    , "ConsumedCapacity" ::
-        { "TableName" :: String
-        , "CapacityUnits" :: Number
-        , "ReadCapacityUnits" :: Number
-        , "WriteCapacityUnits" :: Number
-        , "Table" ::
-            { "ReadCapacityUnits" :: Number
-            , "WriteCapacityUnits" :: Number
-            , "CapacityUnits" :: Number
-            }
-        , "LocalSecondaryIndexes" ::
-            { "ReadCapacityUnits" :: Number
-            , "WriteCapacityUnits" :: Number
-            , "CapacityUnits" :: Number
-            }
-        , "GlobalSecondaryIndexes" ::
-            { "ReadCapacityUnits" :: Number
-            , "WriteCapacityUnits" :: Number
-            , "CapacityUnits" :: Number
-            }
-        }
+    , "ConsumedCapacity" :: ConsumedCapacity
+    }
+
+type ScanResponse i =
+    { "Items" :: i
+    , "Count" :: Int
+    , "ScannedCount" :: Int
+    -- , "LastEvaluatedKey" :: ?
+    , "ConsumedCapacity" :: ConsumedCapacity
     }
 
 -- |Gets an item of DynamoDB.
@@ -100,3 +116,18 @@ deleteItem = fromJSPromise2 _deleteItem
 -- |Puts an item on DynamoDB.
 putItem :: forall r a. DocumentClient a -> PutParams a r -> Aff Unit
 putItem = fromJSPromise2 _putItem
+
+-- |Scans items of DynamoDB
+scanItems :: forall r a. Decode a => DocumentClient a -> ScanParams r -> Aff (ScanResponse (Array a))
+scanItems client params = do
+    response <- scanItems' client params
+    items <- readItems response."Items"
+    pure $ response { "Items" = items }
+    where
+    scanItems' = fromJSPromise2 _scanItems
+
+readItems :: forall m a. MonadThrow Error m => Decode a => Foreign -> m (Array a)
+readItems = (throwError ||| pure)
+    <<< left (error <<< renderMultipleErrors)
+    <<< runExcept
+    <<< (decode :: Foreign -> F (Array a))
