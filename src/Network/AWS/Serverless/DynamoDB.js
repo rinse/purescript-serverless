@@ -11,7 +11,6 @@ exports._documentClient = params => {
 
 exports._getItem = async function (documentClient, params) {
     return documentClient.get(params).promise()
-        .then(r => r.Item);
 };
 
 exports._putItem = async function (documentClient, params) {

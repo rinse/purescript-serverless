@@ -8,6 +8,8 @@ You can edit this file as you like.
     , "aff-promise"
     , "console"
     , "effect"
+    , "foreign-generic"
+    , "profunctor"
     , "proxy"
     , "psci-support"
     , "spec"
