@@ -2,7 +2,9 @@ module Network.AWS.Serverless.DynamoDB.Monad
     ( getItem
     , deleteItem
     , putItem
+    , queryItems
     , scanItems
+    , updateItem
     , runDynamoDB
     , DynamoDB
     ) where
@@ -15,7 +17,7 @@ import Network.AWS.Serverless.DynamoDB as D
 import Prelude
 
 
--- |A monadic alternative of above.
+-- |A monadic alternatives of DoculemtClient.
 type DynamoDB r a = ReaderT (D.DocumentClient r) Aff a
 
 runDynamoDB :: forall r a. DynamoDB r a -> D.DocumentClient r -> Aff a
@@ -32,5 +34,11 @@ deleteItem = ReaderT <<< flip D.deleteItem
 putItem :: forall r a. D.PutParams a r -> DynamoDB a Unit
 putItem = ReaderT <<< flip D.putItem
 
+queryItems :: forall r a. Decode a => D.QueryParams r -> DynamoDB a (D.QueryResponse (Array a))
+queryItems = ReaderT <<< flip D.queryItems
+
 scanItems :: forall r a. Decode a => D.ScanParams r -> DynamoDB a (D.ScanResponse (Array a))
 scanItems = ReaderT <<< flip D.scanItems
+
+updateItem :: forall k r a. D.UpdateParam k r -> DynamoDB a Unit
+updateItem = ReaderT <<< flip D.updateItem
