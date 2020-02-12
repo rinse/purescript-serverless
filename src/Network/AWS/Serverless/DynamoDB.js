@@ -21,6 +21,10 @@ exports._putItem = async function (documentClient, params) {
     return documentClient.put(params).promise();
 };
 
+exports._queryItems = async function (documentClient, params) {
+    return documentClient.query(params).promise();
+};
+
 exports._scanItems = async function (documentClient, params) {
     return documentClient.scan(params).promise();
 };

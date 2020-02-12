@@ -3,14 +3,17 @@ module Network.AWS.Serverless.DynamoDB
     , getItem
     , deleteItem
     , putItem
+    , queryItems
     , scanItems
     , DocumentClient
     , GetParams
     , DeleteParams
     , PutParams
+    , QueryParams
     , ScanParams
     , ConsumedCapacity
     , GetResponse
+    , QueryResponse
     , ScanResponse
     ) where
 
@@ -35,6 +38,7 @@ foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
 foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise (GetResponse Foreign))
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
+foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise (QueryResponse Foreign))
 foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise (ScanResponse Foreign))
 
 
@@ -47,6 +51,7 @@ documentClient = const _documentClient
 type GetParams k r = { "TableName" :: String, "Key" :: k | r }
 type DeleteParams i r = { "TableName" :: String, "Key" :: i | r }
 type PutParams i r = { "TableName" :: String, "Item" :: i | r }
+type QueryParams r = { "TableName" :: String | r }
 type ScanParams r = { "TableName" :: String | r }
 
 type ConsumedCapacity =
@@ -75,6 +80,8 @@ type GetResponse i =
     { "Item" :: i
     , "ConsumedCapacity" :: ConsumedCapacity
     }
+
+type QueryResponse i = ScanResponse i
 
 type ScanResponse i =
     { "Items" :: i
@@ -118,6 +125,15 @@ putItem :: forall r a. DocumentClient a -> PutParams a r -> Aff Unit
 putItem = fromJSPromise2 _putItem
 
 -- |Scans items of DynamoDB
+queryItems :: forall r a. Decode a => DocumentClient a -> QueryParams r -> Aff (QueryResponse (Array a))
+queryItems client params = do
+    response <- queryItems' client params
+    items <- readItems response."Items"
+    pure $ response { "Items" = items }
+    where
+    queryItems' = fromJSPromise2 _queryItems
+
+-- |Queries items of DynamoDB
 scanItems :: forall r a. Decode a => DocumentClient a -> ScanParams r -> Aff (ScanResponse (Array a))
 scanItems client params = do
     response <- scanItems' client params
