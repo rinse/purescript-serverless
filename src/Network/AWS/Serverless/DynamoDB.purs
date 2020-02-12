@@ -5,12 +5,14 @@ module Network.AWS.Serverless.DynamoDB
     , putItem
     , queryItems
     , scanItems
+    , updateItem
     , DocumentClient
     , GetParams
     , DeleteParams
     , PutParams
     , QueryParams
     , ScanParams
+    , UpdateParam
     , ConsumedCapacity
     , GetResponse
     , QueryResponse
@@ -40,6 +42,7 @@ foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (Delete
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
 foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise (QueryResponse Foreign))
 foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise (ScanResponse Foreign))
+foreign import _updateItem :: forall k r a. EffectFn2 (DocumentClient a) (UpdateParam k r) (Promise Unit)
 
 
 fromJSPromise2 :: forall a b c. EffectFn2 a b (Promise c) -> a -> b -> Aff c
@@ -53,6 +56,7 @@ type DeleteParams i r = { "TableName" :: String, "Key" :: i | r }
 type PutParams i r = { "TableName" :: String, "Item" :: i | r }
 type QueryParams r = { "TableName" :: String | r }
 type ScanParams r = { "TableName" :: String | r }
+type UpdateParam k r = { "TableName" :: String, "Key" :: k | r }
 
 type ConsumedCapacity =
     { "TableName" :: String
@@ -147,3 +151,7 @@ readItems = (throwError ||| pure)
     <<< left (error <<< renderMultipleErrors)
     <<< runExcept
     <<< (decode :: Foreign -> F (Array a))
+
+-- |Updates an item on DynamoDB.
+updateItem :: forall k r a. DocumentClient a -> UpdateParam k r -> Aff Unit
+updateItem = fromJSPromise2 _updateItem

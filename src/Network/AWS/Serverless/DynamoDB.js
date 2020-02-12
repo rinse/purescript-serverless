@@ -28,3 +28,7 @@ exports._queryItems = async function (documentClient, params) {
 exports._scanItems = async function (documentClient, params) {
     return documentClient.scan(params).promise();
 };
+
+exports._updateItem = async function (documentClient, params) {
+    return documentClient.update(params).promise();
+};
