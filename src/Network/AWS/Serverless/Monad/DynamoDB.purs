@@ -37,7 +37,7 @@ putItem = ReaderT <<< flip D.putItem
 queryItems :: forall r a. Decode a => D.QueryParams r -> DynamoDB a (D.QueryResponse (Array a))
 queryItems = ReaderT <<< flip D.queryItems
 
-scanItems :: forall r a. Decode a => D.ScanParams r -> DynamoDB a (D.ScanResponse (Array a))
+scanItems :: forall r a. Decode a => D.ScanParams r -> DynamoDB a (D.ScanResponse a)
 scanItems = ReaderT <<< flip D.scanItems
 
 updateItem :: forall k r a. D.UpdateParam k r -> DynamoDB a Unit

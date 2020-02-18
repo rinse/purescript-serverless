@@ -20,6 +20,7 @@ module Network.AWS.Serverless.DynamoDB
     ) where
 
 
+import Control.Bind
 import Control.Monad.Except
 import Control.Monad.Error.Class
 import Control.Promise
@@ -41,7 +42,7 @@ foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
 foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise (QueryResponse Foreign))
-foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise (ScanResponse Foreign))
+foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise Foreign)
 foreign import _updateItem :: forall k r a. EffectFn2 (DocumentClient a) (UpdateParam k r) (Promise Unit)
 
 
@@ -85,14 +86,18 @@ type GetResponse i =
     , "ConsumedCapacity" :: ConsumedCapacity
     }
 
-type QueryResponse i = ScanResponse i
-
-type ScanResponse i =
+type QueryResponse i =
     { "Items" :: i
     , "Count" :: Int
     , "ScannedCount" :: Int
     -- , "LastEvaluatedKey" :: ?
     , "ConsumedCapacity" :: ConsumedCapacity
+    }
+
+type ScanResponse i =
+    { "Items" :: Array i
+    , "Count" :: Int
+    , "ScannedCount" :: Int
     }
 
 -- |Gets an item of DynamoDB.
@@ -138,13 +143,16 @@ queryItems client params = do
     queryItems' = fromJSPromise2 _queryItems
 
 -- |Queries items of DynamoDB
-scanItems :: forall r a. Decode a => DocumentClient a -> ScanParams r -> Aff (ScanResponse (Array a))
-scanItems client params = do
-    response <- scanItems' client params
-    items <- readItems response."Items"
-    pure $ response { "Items" = items }
+scanItems :: forall r a. Decode a => DocumentClient a -> ScanParams r -> Aff (ScanResponse a)
+scanItems client = scanItems' client >=> decode'
     where
     scanItems' = fromJSPromise2 _scanItems
+
+decode' :: forall m a. MonadThrow Error m => Decode a => Foreign -> m a
+decode' = (throwError ||| pure)
+    <<< left (error <<< renderMultipleErrors)
+    <<< runExcept
+    <<< decode
 
 readItems :: forall m a. MonadThrow Error m => Decode a => Foreign -> m (Array a)
 readItems = (throwError ||| pure)
