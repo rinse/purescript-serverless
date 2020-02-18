@@ -41,7 +41,7 @@ foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
 foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise (GetResponse Foreign))
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
-foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise (QueryResponse Foreign))
+foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise Foreign)
 foreign import _scanItems :: forall r a. EffectFn2 (DocumentClient a) (ScanParams r) (Promise Foreign)
 foreign import _updateItem :: forall k r a. EffectFn2 (DocumentClient a) (UpdateParam k r) (Promise Unit)
 
@@ -87,11 +87,9 @@ type GetResponse i =
     }
 
 type QueryResponse i =
-    { "Items" :: i
+    { "Items" :: Array i
     , "Count" :: Int
     , "ScannedCount" :: Int
-    -- , "LastEvaluatedKey" :: ?
-    , "ConsumedCapacity" :: ConsumedCapacity
     }
 
 type ScanResponse i =
@@ -134,11 +132,8 @@ putItem :: forall r a. DocumentClient a -> PutParams a r -> Aff Unit
 putItem = fromJSPromise2 _putItem
 
 -- |Scans items of DynamoDB
-queryItems :: forall r a. Decode a => DocumentClient a -> QueryParams r -> Aff (QueryResponse (Array a))
-queryItems client params = do
-    response <- queryItems' client params
-    items <- readItems response."Items"
-    pure $ response { "Items" = items }
+queryItems :: forall r a. Decode a => DocumentClient a -> QueryParams r -> Aff (QueryResponse a)
+queryItems client = queryItems' client >=> decode'
     where
     queryItems' = fromJSPromise2 _queryItems
 
@@ -153,12 +148,6 @@ decode' = (throwError ||| pure)
     <<< left (error <<< renderMultipleErrors)
     <<< runExcept
     <<< decode
-
-readItems :: forall m a. MonadThrow Error m => Decode a => Foreign -> m (Array a)
-readItems = (throwError ||| pure)
-    <<< left (error <<< renderMultipleErrors)
-    <<< runExcept
-    <<< (decode :: Foreign -> F (Array a))
 
 -- |Updates an item on DynamoDB.
 updateItem :: forall k r a. DocumentClient a -> UpdateParam k r -> Aff Unit
