@@ -18,24 +18,21 @@ module Network.AWS.Serverless.DynamoDB
     , ScanResponse
     ) where
 
-
-import Control.Bind
-import Control.Monad.Except
-import Control.Monad.Error.Class
-import Control.Promise
-import Data.Foldable
-import Data.List.Types
-import Data.Maybe
-import Data.Profunctor.Choice (left, (|||))
-import Effect.Aff
-import Effect.Uncurried
-import Foreign
-import Foreign.Generic.Class
-import Prelude
-import Type.Proxy (Proxy)
+import Control.Monad.Except      (runExcept)
+import Control.Monad.Error.Class (class MonadThrow)
+import Control.Promise           (Promise, toAffE)
+import Data.Foldable             (fold)
+import Data.List.Types           (toList)
+import Data.Maybe                (Maybe)
+import Data.Profunctor.Choice    (left, (|||))
+import Effect.Aff                (Aff, Error, error, throwError)
+import Effect.Uncurried          (EffectFn2, runEffectFn2)
+import Foreign                   (Foreign, MultipleErrors, renderForeignError)
+import Foreign.Generic.Class     (class Decode, decode)
+import Prelude                   (Unit, const, map, pure, (<<<), (>=>))
+import Type.Proxy                (Proxy)
 
 foreign import data DocumentClient :: Type -> Type
-
 foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
 foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise Foreign)
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
@@ -51,21 +48,30 @@ fromJSPromise2 = (map <<< map) toAffE <<< runEffectFn2
 documentClient :: forall r a. Proxy a -> { | r } -> DocumentClient a
 documentClient = const _documentClient
 
+-- |Extensible parameters for `getItem`.
 type GetParams k r = { "TableName" :: String, "Key" :: k | r }
+-- |Extensible parameters for `deleteItem`.
 type DeleteParams i r = { "TableName" :: String, "Key" :: i | r }
+-- |Extensible parameters for `putItem`.
 type PutParams i r = { "TableName" :: String, "Item" :: i | r }
+-- |Extensible parameters for `queryItems`.
 type QueryParams r = { "TableName" :: String | r }
+-- |Extensible parameters for `scanItems`.
 type ScanParams r = { "TableName" :: String | r }
+-- |Extensible parameters for `updateItem`.
 type UpdateParam k r = { "TableName" :: String, "Key" :: k | r }
 
+-- |Represents response data from `getItem`
 type GetResponse i = { "Item" :: Maybe i }
 
+-- |Represents response data from `queryItems`
 type QueryResponse i =
     { "Items" :: Array i
     , "Count" :: Int
     , "ScannedCount" :: Int
     }
 
+-- |Represents response data from `scanItems`
 type ScanResponse i =
     { "Items" :: Array i
     , "Count" :: Int
@@ -73,10 +79,7 @@ type ScanResponse i =
     }
 
 -- |Gets an item of DynamoDB.
-getItem :: forall k r a. Decode a
-        => DocumentClient a
-        -> GetParams k r
-        -> Aff (GetResponse a)
+getItem :: forall k r a. Decode a => DocumentClient a -> GetParams k r -> Aff (GetResponse a)
 getItem client = getItem' client >=> decode'
     where
     getItem' = fromJSPromise2 _getItem
