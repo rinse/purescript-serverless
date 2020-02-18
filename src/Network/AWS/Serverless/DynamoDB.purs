@@ -81,11 +81,6 @@ getItem client = getItem' client >=> decode'
     where
     getItem' = fromJSPromise2 _getItem
 
-renderMultipleErrors :: MultipleErrors -> String
-renderMultipleErrors = renderForeignErrors <<< toList
-    where
-    renderForeignErrors = foldr (\a b -> renderForeignError a <> b) mempty
-
 -- |Deletes an item of DynamoDB.
 deleteItem :: forall k r a. DocumentClient a -> DeleteParams k r -> Aff Unit
 deleteItem = fromJSPromise2 _deleteItem
@@ -111,6 +106,9 @@ decode' = (throwError ||| pure)
     <<< left (error <<< renderMultipleErrors)
     <<< runExcept
     <<< decode
+
+renderMultipleErrors :: MultipleErrors -> String
+renderMultipleErrors = fold <<< map renderForeignError <<< toList
 
 -- |Updates an item on DynamoDB.
 updateItem :: forall k r a. DocumentClient a -> UpdateParam k r -> Aff Unit
