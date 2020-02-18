@@ -13,7 +13,6 @@ module Network.AWS.Serverless.DynamoDB
     , QueryParams
     , ScanParams
     , UpdateParam
-    , ConsumedCapacity
     , GetResponse
     , QueryResponse
     , ScanResponse
@@ -38,7 +37,7 @@ import Type.Proxy (Proxy)
 foreign import data DocumentClient :: Type -> Type
 
 foreign import _documentClient :: forall r a. { | r } -> DocumentClient a
-foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise (GetResponse Foreign))
+foreign import _getItem :: forall k r a. EffectFn2 (DocumentClient a) (GetParams k r) (Promise Foreign)
 foreign import _deleteItem :: forall k r a. EffectFn2 (DocumentClient a) (DeleteParams k r) (Promise Unit)
 foreign import _putItem :: forall r a. EffectFn2 (DocumentClient a) (PutParams a r) (Promise Unit)
 foreign import _queryItems :: forall r a. EffectFn2 (DocumentClient a) (QueryParams r) (Promise Foreign)
@@ -59,32 +58,7 @@ type QueryParams r = { "TableName" :: String | r }
 type ScanParams r = { "TableName" :: String | r }
 type UpdateParam k r = { "TableName" :: String, "Key" :: k | r }
 
-type ConsumedCapacity =
-    { "TableName" :: String
-    , "CapacityUnits" :: Number
-    , "ReadCapacityUnits" :: Number
-    , "WriteCapacityUnits" :: Number
-    , "Table" ::
-        { "ReadCapacityUnits" :: Number
-        , "WriteCapacityUnits" :: Number
-        , "CapacityUnits" :: Number
-        }
-    , "LocalSecondaryIndexes" ::
-        { "ReadCapacityUnits" :: Number
-        , "WriteCapacityUnits" :: Number
-        , "CapacityUnits" :: Number
-        }
-    , "GlobalSecondaryIndexes" ::
-        { "ReadCapacityUnits" :: Number
-        , "WriteCapacityUnits" :: Number
-        , "CapacityUnits" :: Number
-        }
-    }
-
-type GetResponse i =
-    { "Item" :: i
-    , "ConsumedCapacity" :: ConsumedCapacity
-    }
+type GetResponse i = { "Item" :: Maybe i }
 
 type QueryResponse i =
     { "Items" :: Array i
@@ -102,21 +76,10 @@ type ScanResponse i =
 getItem :: forall k r a. Decode a
         => DocumentClient a
         -> GetParams k r
-        -> Aff (GetResponse (Maybe a))
-getItem client params = do
-    response <- getItem' client params
-    item <- readItem response."Item"
-    pure $ response { "Item" = item }
+        -> Aff (GetResponse a)
+getItem client = getItem' client >=> decode'
     where
     getItem' = fromJSPromise2 _getItem
-
--- |'Nothing' for null and undefined.
--- |throws an exception for mimatched types.
-readItem :: forall m a. MonadThrow Error m => Decode a => Foreign -> m (Maybe a)
-readItem = (throwError ||| pure)
-    <<< left (error <<< renderMultipleErrors)
-    <<< runExcept
-    <<< (decode :: Foreign -> F (Maybe a))
 
 renderMultipleErrors :: MultipleErrors -> String
 renderMultipleErrors = renderForeignErrors <<< toList

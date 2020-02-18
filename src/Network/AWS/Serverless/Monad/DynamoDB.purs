@@ -25,7 +25,7 @@ runDynamoDB = runReaderT
 
 getItem :: forall k r a. Decode a
      => D.GetParams k r
-     -> DynamoDB a (D.GetResponse (Maybe a))
+     -> DynamoDB a (D.GetResponse a)
 getItem = ReaderT <<< flip D.getItem
 
 deleteItem :: forall k r a. D.DeleteParams k r -> DynamoDB a Unit
